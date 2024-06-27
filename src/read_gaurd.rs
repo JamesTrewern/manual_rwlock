@@ -76,3 +76,10 @@ impl<'a, T> Deref for ReadGaurd<'a, T> {
         unsafe { &*self.data }
     }
 }
+
+impl<'a, T> Clone for ReadGaurd<'a, T> {
+    fn clone(&self) -> Self {
+        self.state.read().unwrap();
+        Self { state: self.state, data: self.data }
+    }
+}

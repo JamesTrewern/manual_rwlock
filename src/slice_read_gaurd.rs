@@ -90,3 +90,10 @@ impl<'a, T> Deref for SliceReadGaurd<'a, T> {
         unsafe { &*self.data }
     }
 }
+
+impl<'a, T> Clone for SliceReadGaurd<'a, T> {
+    fn clone(&self) -> Self {
+        self.state.read().unwrap();
+        Self { state: self.state, data: self.data }
+    }
+}
