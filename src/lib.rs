@@ -124,7 +124,7 @@ impl LockState {
                     self.poisoned.store(true, Relaxed);
                     return Ok(());
                 }
-                Err(e) => return Err(LockError::WouldBlock),
+                Err(_) => return Err(LockError::WouldBlock),
             }
         } else {
             return Err(LockError::WouldBlock);
@@ -156,7 +156,7 @@ impl LockState {
                 .compare_exchange_weak(s, u32::MAX, Acquire, Relaxed)
             {
                 Ok(_) => Ok(()),
-                Err(e) => Err(LockError::WouldBlock),
+                Err(_) => Err(LockError::WouldBlock),
             }
         } else {
             Err(LockError::WouldBlock)
@@ -211,7 +211,7 @@ impl<T> MrwLock<T> {
     }
 
     pub fn try_write(&self) -> LockResult<WriteGaurd<T>> {
-        self.state.try_write();
+        self.state.try_write()?;
         Ok(WriteGaurd {
             state: &self.state,
             data: self.data.get(),
