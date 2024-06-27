@@ -6,7 +6,7 @@ repository = "https://github.com/JamesTrewern/manual_rwlock"
 description = "A library implementing An RW lock with more manual control"
 authors = ["James Trewern <Trewern.James@gmail.com>"]
 license = "MIT"
-keywords =["RwLock", "multi threading", "async", "concurrency", "RefCell"]
+keywords =["RwLock", "mult-threading", "async", "concurrency", "RefCell"]
 categories = ["data-structures", "memory-management", "asynchronous"]
 
 
