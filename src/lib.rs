@@ -1,5 +1,5 @@
 //! # Manual RwLock
-//! A library Implementing An RW lock with more manual control 
+//! A library implementing An RW lock with more manual control 
 //! Sorry for poor documentation, I will update this later.
 //! <br> New Read Write Lock struct: [MrwLock]
 //! # Examples
