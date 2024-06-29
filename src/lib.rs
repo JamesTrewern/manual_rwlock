@@ -51,7 +51,6 @@ use atomic_wait::wait;
 use std::{
     borrow::BorrowMut,
     cell::UnsafeCell,
-    ops::{Deref, DerefMut},
     sync::atomic::{
         AtomicBool, AtomicU32,
         Ordering::{Acquire, Relaxed},
