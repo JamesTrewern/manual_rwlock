@@ -49,10 +49,13 @@ mod write_gaurd;
 
 use atomic_wait::wait;
 use std::{
-    borrow::BorrowMut, cell::UnsafeCell, ops::{Deref, DerefMut}, sync::atomic::{
+    cell::UnsafeCell,
+    ops::DerefMut,
+    sync::atomic::{
         AtomicBool, AtomicU32,
         Ordering::{Acquire, Relaxed},
-    }, thread
+    },
+    thread,
 };
 
 pub use read_gaurd::ReadGaurd;
@@ -265,9 +268,11 @@ impl<T> MrwLock<T> {
     }
 }
 
-impl<T,U> MrwLock<T> where T: DerefMut<Target = [U]> {
-    pub fn try_read_slice(&self) -> LockResult<SliceReadGaurd<U>>
-    {
+impl<T, U> MrwLock<T>
+where
+    T: DerefMut<Target = [U]>,
+{
+    pub fn try_read_slice(&self) -> LockResult<SliceReadGaurd<U>> {
         self.state.try_read()?;
         Ok(SliceReadGaurd {
             state: &self.state,
@@ -275,8 +280,7 @@ impl<T,U> MrwLock<T> where T: DerefMut<Target = [U]> {
         })
     }
 
-    pub fn read_slice(&self) -> LockResult<SliceReadGaurd<U>>
-    {
+    pub fn read_slice(&self) -> LockResult<SliceReadGaurd<U>> {
         self.state.read()?;
         Ok(SliceReadGaurd {
             state: &self.state,
@@ -284,8 +288,7 @@ impl<T,U> MrwLock<T> where T: DerefMut<Target = [U]> {
         })
     }
 
-    pub fn try_write_slice(&self) -> LockResult<SliceWriteGaurd<U>>
-    {
+    pub fn try_write_slice(&self) -> LockResult<SliceWriteGaurd<U>> {
         self.state.try_write()?;
         Ok(SliceWriteGaurd {
             state: &self.state,
@@ -293,8 +296,7 @@ impl<T,U> MrwLock<T> where T: DerefMut<Target = [U]> {
         })
     }
 
-    pub fn write_slice(&self) -> LockResult<SliceWriteGaurd<U>>
-    {
+    pub fn write_slice(&self) -> LockResult<SliceWriteGaurd<U>> {
         self.state.write()?;
         Ok(SliceWriteGaurd {
             state: &self.state,
