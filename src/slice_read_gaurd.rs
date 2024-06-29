@@ -9,8 +9,7 @@ use crate::{LockResult, LockState, SliceWriteGaurd};
 /// # Examples
 /// ```
 /// use manual_rwlock::MrwLock;
-/// let boxed_slice: Box<[isize]> = Box::new([1,2,3]);
-/// let rwlock = MrwLock::new(boxed_slice);
+/// let rwlock = MrwLock::new([1,2,3]);
 /// let slice_read = rwlock.try_read_slice().unwrap();
 /// assert_eq!(*slice_read, [1,2,3])
 ///

@@ -49,8 +49,9 @@ mod write_gaurd;
 
 use atomic_wait::wait;
 use std::{
+    borrow::BorrowMut,
     cell::UnsafeCell,
-    ops::DerefMut,
+    ops::{Deref, DerefMut},
     sync::atomic::{
         AtomicBool, AtomicU32,
         Ordering::{Acquire, Relaxed},
@@ -268,39 +269,49 @@ impl<T> MrwLock<T> {
     }
 }
 
-impl<T, U> MrwLock<T>
-where
-    T: DerefMut<Target = [U]>,
+impl<T> MrwLock<T>
 {
-    pub fn try_read_slice(&self) -> LockResult<SliceReadGaurd<U>> {
+    pub fn try_read_slice<U>(&self) -> LockResult<SliceReadGaurd<U>>
+    where
+        T: BorrowMut<[U]>,
+    {
         self.state.try_read()?;
         Ok(SliceReadGaurd {
             state: &self.state,
-            data: unsafe { (*self.data.get()).as_mut() } as *mut [U],
+            data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 
-    pub fn read_slice(&self) -> LockResult<SliceReadGaurd<U>> {
+    pub fn read_slice<U>(&self) -> LockResult<SliceReadGaurd<U>>
+    where
+        T: BorrowMut<[U]>,
+    {
         self.state.read()?;
         Ok(SliceReadGaurd {
             state: &self.state,
-            data: unsafe { (*self.data.get()).as_mut() } as *mut [U],
+            data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 
-    pub fn try_write_slice(&self) -> LockResult<SliceWriteGaurd<U>> {
+    pub fn try_write_slice<U>(&self) -> LockResult<SliceWriteGaurd<U>>
+    where
+        T: BorrowMut<[U]>,
+    {
         self.state.try_write()?;
         Ok(SliceWriteGaurd {
             state: &self.state,
-            data: unsafe { (*self.data.get()).as_mut() } as *mut [U],
+            data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 
-    pub fn write_slice(&self) -> LockResult<SliceWriteGaurd<U>> {
+    pub fn write_slice<U>(&self) -> LockResult<SliceWriteGaurd<U>>
+    where
+        T: BorrowMut<[U]>,
+    {
         self.state.write()?;
         Ok(SliceWriteGaurd {
             state: &self.state,
-            data: unsafe { (*self.data.get()).as_mut() } as *mut [U],
+            data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 }

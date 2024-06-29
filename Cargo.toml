@@ -1,6 +1,6 @@
 [package]
 name = "manual_rwlock"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/JamesTrewern/manual_rwlock"
 description = "A library implementing An RW lock with more manual control"
