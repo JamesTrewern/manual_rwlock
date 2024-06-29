@@ -1,5 +1,5 @@
 //! # Manual RwLock
-//! A library implementing An RW lock with more manual control 
+//! A library implementing An RW lock with more manual control
 //! Sorry for poor documentation, I will update this later.
 //! <br> New read write lock struct: [MrwLock]
 //! # Examples
@@ -20,7 +20,7 @@
 //! let read = mrw_lock.read().unwrap();
 //! unsafe {read.early_release();}
 //! {
-//!     let write = mrw_lock.write().unwrap();
+//!     let mut write = mrw_lock.write().unwrap();
 //!     *write = 5;
 //! }
 //! unsafe {read.reobtain();}
@@ -39,7 +39,7 @@
 //! [LockState]
 //!
 //!     
-//! 
+//!
 mod read_gaurd;
 mod slice_read_gaurd;
 mod slice_write_gaurd;
@@ -49,11 +49,10 @@ mod write_gaurd;
 
 use atomic_wait::wait;
 use std::{
-    cell::UnsafeCell,
-    sync::atomic::{
+    borrow::BorrowMut, cell::UnsafeCell, ops::{Deref, DerefMut}, sync::atomic::{
         AtomicBool, AtomicU32,
         Ordering::{Acquire, Relaxed},
-    },
+    }, thread
 };
 
 pub use read_gaurd::ReadGaurd;
@@ -87,9 +86,6 @@ impl LockState {
 
     ///Increment number of readers. If there is a write lock block thread until read lock can be obtained
     pub fn read(&self) -> LockResult<()> {
-        if self.poisoned.load(Relaxed) {
-            return Err(LockError::Poisoned);
-        }
         let mut s = self.state.load(Relaxed);
         loop {
             if s == u32::MAX {
@@ -99,7 +95,13 @@ impl LockState {
                 return Err(LockError::TooManyReaders);
             } else {
                 match self.state.compare_exchange_weak(s, s + 1, Acquire, Relaxed) {
-                    Ok(_) => return Ok(()),
+                    Ok(_) => {
+                        if self.poisoned.load(Relaxed) {
+                            return Err(LockError::Poisoned);
+                        } else {
+                            return Ok(());
+                        }
+                    }
                     Err(e) => s = e,
                 }
             }
@@ -108,9 +110,6 @@ impl LockState {
 
     ///Increment number of readers. If there is a write lock return [LockError::WouldBlock]
     pub fn try_read(&self) -> LockResult<()> {
-        if self.poisoned.load(Relaxed) {
-            return Err(LockError::Poisoned);
-        }
         let mut s = self.state.load(Relaxed);
         loop {
             if s < u32::MAX {
@@ -118,7 +117,13 @@ impl LockState {
                     return Err(LockError::TooManyReaders);
                 }
                 match self.state.compare_exchange_weak(s, s + 1, Acquire, Relaxed) {
-                    Ok(_) => return Ok(()),
+                    Ok(_) => {
+                        if self.poisoned.load(Relaxed) {
+                            return Err(LockError::Poisoned);
+                        } else {
+                            return Ok(());
+                        }
+                    }
 
                     Err(e) => s = e,
                 }
@@ -130,61 +135,64 @@ impl LockState {
 
     ///Attempt write lock. If there is another lock block thread until the write lock can be obtained
     pub fn write(&self) -> LockResult<()> {
-        if self.poisoned.load(Relaxed) {
-            return Err(LockError::Poisoned);
-        }
         while let Err(s) = self.state.compare_exchange(0, u32::MAX, Acquire, Relaxed) {
             // Wait while already locked.
             wait(&self.state, s);
         }
-        self.poisoned.store(true, Relaxed);
-        Ok(())
+        if self.poisoned.load(Relaxed) {
+            Err(LockError::Poisoned)
+        } else {
+            Ok(())
+        }
     }
 
     ///Attempt write lock. If there is another lock return [LockError::WouldBlock]
     pub fn try_write(&self) -> LockResult<()> {
-        if self.poisoned.load(Relaxed) {
-            return Err(LockError::Poisoned);
-        }
         let s = self.state.load(Relaxed);
         if s == 0 {
             match self.state.compare_exchange_weak(s, s + 1, Acquire, Relaxed) {
                 Ok(_) => {
-                    self.poisoned.store(true, Relaxed);
-                    return Ok(());
+                    if self.poisoned.load(Relaxed) {
+                        Err(LockError::Poisoned)
+                    } else {
+                        Ok(())
+                    }
                 }
-                Err(_) => return Err(LockError::WouldBlock),
+                Err(_) => Err(LockError::WouldBlock),
             }
         } else {
-            return Err(LockError::WouldBlock);
+            Err(LockError::WouldBlock)
         }
     }
 
     ///Convert a read lock into a write lock, if there is another lock block thread until write lock can be obtained
     pub fn to_write(&self) -> LockResult<()> {
-        if self.poisoned.load(Relaxed) {
-            return Err(LockError::Poisoned);
-        }
         while let Err(s) = self.state.compare_exchange(1, u32::MAX, Acquire, Relaxed) {
             // Wait while already locked.
             wait(&self.state, s);
         }
-        self.poisoned.store(true, Relaxed);
-        Ok(())
+        if self.poisoned.load(Relaxed) {
+            Err(LockError::Poisoned)
+        } else {
+            Ok(())
+        }
     }
 
     ///Attempt to convert a read lock into a write lock, if there is another lock return [LockError::WouldBlock]
     pub fn try_to_write(&self) -> LockResult<()> {
-        if self.poisoned.load(Relaxed) {
-            return Err(LockError::Poisoned);
-        }
         let s = self.state.load(Relaxed);
         if s == 1 {
             match self
                 .state
                 .compare_exchange_weak(s, u32::MAX, Acquire, Relaxed)
             {
-                Ok(_) => Ok(()),
+                Ok(_) => {
+                    if self.poisoned.load(Relaxed) {
+                        Err(LockError::Poisoned)
+                    } else {
+                        Ok(())
+                    }
+                }
                 Err(_) => Err(LockError::WouldBlock),
             }
         } else {
@@ -195,18 +203,18 @@ impl LockState {
     ///Convert write lock to read lock
     pub fn to_read(&self) {
         self.state.store(1, Relaxed);
-        self.poisoned.store(false, Relaxed);
     }
 
     ///Drop read lock. Decrements the total nubmer of readers
     pub fn drop_read(&self) {
-        self.poisoned.store(false, Relaxed);
         self.state.fetch_sub(1, Relaxed);
     }
 
     ///Drop write lock. Sets number of readers to 0;
     pub fn drop_write(&self) {
-        self.poisoned.store(false, Relaxed);
+        if thread::panicking() {
+            self.poisoned.store(true, Relaxed);
+        }
         self.state.store(0, Relaxed);
     }
 }
@@ -255,10 +263,10 @@ impl<T> MrwLock<T> {
             data: self.data.get(),
         })
     }
+}
 
-    pub fn try_read_slice<U: Sized>(&self) -> LockResult<SliceReadGaurd<U>>
-    where
-        T: AsMut<[U]>,
+impl<T,U> MrwLock<T> where T: DerefMut<Target = [U]> {
+    pub fn try_read_slice(&self) -> LockResult<SliceReadGaurd<U>>
     {
         self.state.try_read()?;
         Ok(SliceReadGaurd {
@@ -267,9 +275,7 @@ impl<T> MrwLock<T> {
         })
     }
 
-    pub fn read_slice<U: Sized>(&self) -> LockResult<SliceReadGaurd<U>>
-    where
-        T: AsMut<[U]>,
+    pub fn read_slice(&self) -> LockResult<SliceReadGaurd<U>>
     {
         self.state.read()?;
         Ok(SliceReadGaurd {
@@ -278,9 +284,7 @@ impl<T> MrwLock<T> {
         })
     }
 
-    pub fn try_write_slice<U>(&self) -> LockResult<SliceWriteGaurd<U>>
-    where
-        T: AsMut<[U]>,
+    pub fn try_write_slice(&self) -> LockResult<SliceWriteGaurd<U>>
     {
         self.state.try_write()?;
         Ok(SliceWriteGaurd {
@@ -289,9 +293,7 @@ impl<T> MrwLock<T> {
         })
     }
 
-    pub fn write_slice<U>(&self) -> LockResult<SliceWriteGaurd<U>>
-    where
-        T: AsMut<[U]>,
+    pub fn write_slice(&self) -> LockResult<SliceWriteGaurd<U>>
     {
         self.state.write()?;
         Ok(SliceWriteGaurd {
