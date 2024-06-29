@@ -8,6 +8,7 @@ pub struct WriteGaurd<'a, T: Sized> {
 }
 
 impl<'a, T> WriteGaurd<'a, T> {
+    /// Convert to a read guard. This should always work as having a write lock guarantees there is only one lock
     pub fn to_read(self) -> ReadGaurd<'a, T> {
         self.state.to_read();
         ReadGaurd {

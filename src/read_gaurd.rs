@@ -7,6 +7,8 @@ pub struct ReadGaurd<'a, T: Sized> {
 }
 
 impl<'a, T> ReadGaurd<'a, T> {
+    ///Same as [Self::to_write] but instead of blocking thread,
+    /// if a lock can not be obtained when called a [LockError::WouldBlock] is returned
     pub fn try_to_write(self) -> LockResult<WriteGaurd<'a, T>> {
         self.state.try_to_write()?;
         Ok(WriteGaurd {
@@ -15,6 +17,15 @@ impl<'a, T> ReadGaurd<'a, T> {
         })
     }
 
+    /// ```
+    /// use manual_rwlock::MrwLock;
+    /// let mrw_lock = MrwLock::new(10);
+    /// let read = mrw_lock.read().unwrap();
+    /// let mut write = read.to_write().unwrap();
+    /// *write = 5;
+    /// let read = write.to_read();
+    /// assert_eq!(*read, 5)
+    /// ```
     pub fn to_write(self) -> LockResult<WriteGaurd<'a, T>> {
         self.state.to_write()?;
         Ok(WriteGaurd {
@@ -28,7 +39,7 @@ impl<'a, T> ReadGaurd<'a, T> {
     /// Do not access contents before reobtaining lock with either reobtain or try_reobtain
     /// # Examples
     ///```
-    ///  use manual_rwlock::MrwLock
+    ///  use manual_rwlock::MrwLock;
     ///
     /// let rwlock = MrwLock::new(5);
     /// let read_rw = rwlock.read().unwrap();
@@ -77,9 +88,22 @@ impl<'a, T> Deref for ReadGaurd<'a, T> {
     }
 }
 
+///
+/// ```
+///  use manual_rwlock::MrwLock;
+///
+/// let rwlock = MrwLock::new(5);
+/// let read = rwlock.read().unwrap();
+/// let read2 = read.clone();
+/// assert_eq!(*read2, 5);
+///
+/// ```
 impl<'a, T> Clone for ReadGaurd<'a, T> {
     fn clone(&self) -> Self {
         self.state.read().unwrap();
-        Self { state: self.state, data: self.data }
+        Self {
+            state: self.state,
+            data: self.data,
+        }
     }
 }

@@ -34,3 +34,4 @@ fn write_early_release() {
     write_rw.push(5);
     assert_eq!(*write_rw, [1, 2, 3, 4, 5]);
 }
+

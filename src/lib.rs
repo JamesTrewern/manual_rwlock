@@ -1,12 +1,41 @@
 //! # Manual RwLock
 //! A library implementing An RW lock with more manual control 
 //! Sorry for poor documentation, I will update this later.
-//! <br> New Read Write Lock struct: [MrwLock]
+//! <br> New read write lock struct: [MrwLock]
 //! # Examples
 //! # Convert between Guards
+//! ```
+//! use manual_rwlock::MrwLock;
+//! let mrw_lock = MrwLock::new(10);
+//! let read = mrw_lock.read().unwrap();
+//! let mut write = read.to_write().unwrap();
+//! *write = 5;
+//! let read = write.to_read();
+//! assert_eq!(*read, 5)
+//! ```
 //! # Release and Reobtain locks
+//! ```
+//! use manual_rwlock::MrwLock;
+//! let mrw_lock = MrwLock::new(10);
+//! let read = mrw_lock.read().unwrap();
+//! unsafe {read.early_release();}
+//! {
+//!     let write = mrw_lock.write();
+//!     *write = 5;
+//! }
+//! unsafe {read.reobtain();}
+//! assert_eq!(*read, 5)
+//! ```
+//! # Clone [ReadGaurd]
+//! ```
+//!  use manual_rwlock::MrwLock;
+//!
+//! let rwlock = MrwLock::new(5);
+//! let read = rwlock.read().unwrap();
+//! let read2 = read.clone();
+//! assert_eq!(*read2, 5);
+//! ```
 //! # Use Locking Directly
-//! a link to 
 //! [LockState]
 //!
 //!     
@@ -177,6 +206,7 @@ impl LockState {
 
     ///Drop write lock. Sets number of readers to 0;
     pub fn drop_write(&self) {
+        self.poisoned.store(false, Relaxed);
         self.state.store(0, Relaxed);
     }
 }

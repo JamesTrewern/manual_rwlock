@@ -12,9 +12,9 @@ use crate::{LockResult, LockState, SliceReadGaurd};
 /// use manual_rwlock::MrwLock;
 ///
 /// let rwlock = MrwLock::new(vec![1, 2, 3]);
-/// let slice_write = rwlock.try_write_slice().unwrap();
+/// let mut slice_write = rwlock.try_write_slice().unwrap();
 /// slice_write[2] = 4;
-/// assert_eq!(*slice_read, [1,2,4])
+/// assert_eq!(*slice_write, [1,2,4])
 ///
 /// ```
 pub struct SliceWriteGaurd<'a, T: Sized> {
