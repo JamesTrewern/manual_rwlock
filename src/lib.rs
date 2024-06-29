@@ -20,7 +20,7 @@
 //! let read = mrw_lock.read().unwrap();
 //! unsafe {read.early_release();}
 //! {
-//!     let write = mrw_lock.write();
+//!     let write = mrw_lock.write().unwrap();
 //!     *write = 5;
 //! }
 //! unsafe {read.reobtain();}
