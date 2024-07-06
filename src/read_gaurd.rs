@@ -107,3 +107,8 @@ impl<'a, T> Clone for ReadGaurd<'a, T> {
         }
     }
 }
+
+
+
+unsafe impl<'a,T> Send for ReadGaurd<'a, T>{}
+unsafe impl<'a, T> Sync for ReadGaurd<'a, T>{}

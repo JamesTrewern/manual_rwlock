@@ -77,3 +77,6 @@ impl<'a, T> DerefMut for WriteGaurd<'a, T> {
         unsafe { &mut *self.data }
     }
 }
+
+unsafe impl<'a,T> Send for WriteGaurd<'a, T>{}
+unsafe impl<'a, T> Sync for WriteGaurd<'a, T>{}

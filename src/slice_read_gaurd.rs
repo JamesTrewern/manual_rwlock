@@ -96,3 +96,6 @@ impl<'a, T> Clone for SliceReadGaurd<'a, T> {
         Self { state: self.state, data: self.data }
     }
 }
+
+unsafe impl<'a,T> Send for SliceReadGaurd<'a, T>{}
+unsafe impl<'a, T> Sync for SliceReadGaurd<'a, T>{}

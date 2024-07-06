@@ -314,3 +314,7 @@ impl<T> MrwLock<T>
         })
     }
 }
+
+
+unsafe impl<T> Send for MrwLock<T>{}
+unsafe impl<T> Sync for MrwLock<T>{}

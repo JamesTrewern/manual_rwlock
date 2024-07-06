@@ -91,3 +91,6 @@ impl<'a, T> DerefMut for SliceWriteGaurd<'a, T> {
         unsafe { &mut *self.data }
     }
 }
+
+unsafe impl<'a,T> Send for SliceWriteGaurd<'a, T>{}
+unsafe impl<'a, T> Sync for SliceWriteGaurd<'a, T>{}
