@@ -1,17 +1,17 @@
-use crate::{write_gaurd::WriteGaurd, LockError, LockResult, LockState};
+use crate::{write_guard::WriteGuard, LockError, LockResult, LockState};
 use std::ops::Deref;
 
-pub struct ReadGaurd<'a, T: Sized> {
+pub struct ReadGuard<'a, T: Sized> {
     pub(super) state: &'a LockState,
     pub(super) data: *mut T,
 }
 
-impl<'a, T> ReadGaurd<'a, T> {
+impl<'a, T> ReadGuard<'a, T> {
     ///Same as [Self::to_write] but instead of blocking thread,
     /// if a lock can not be obtained when called a [LockError::WouldBlock] is returned
-    pub fn try_to_write(self) -> LockResult<WriteGaurd<'a, T>> {
+    pub fn try_to_write(self) -> LockResult<WriteGuard<'a, T>> {
         self.state.try_to_write()?;
-        Ok(WriteGaurd {
+        Ok(WriteGuard {
             state: &self.state,
             data: self.data,
         })
@@ -26,9 +26,9 @@ impl<'a, T> ReadGaurd<'a, T> {
     /// let read = write.to_read();
     /// assert_eq!(*read, 5)
     /// ```
-    pub fn to_write(self) -> LockResult<WriteGaurd<'a, T>> {
+    pub fn to_write(self) -> LockResult<WriteGuard<'a, T>> {
         self.state.to_write()?;
-        Ok(WriteGaurd {
+        Ok(WriteGuard {
             state: &self.state,
             data: self.data,
         })
@@ -74,13 +74,13 @@ impl<'a, T> ReadGaurd<'a, T> {
     }
 }
 
-impl<'a, T> Drop for ReadGaurd<'a, T> {
+impl<'a, T> Drop for ReadGuard<'a, T> {
     fn drop(&mut self) {
         self.state.drop_read();
     }
 }
 
-impl<'a, T> Deref for ReadGaurd<'a, T> {
+impl<'a, T> Deref for ReadGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -98,7 +98,7 @@ impl<'a, T> Deref for ReadGaurd<'a, T> {
 /// assert_eq!(*read2, 5);
 ///
 /// ```
-impl<'a, T> Clone for ReadGaurd<'a, T> {
+impl<'a, T> Clone for ReadGuard<'a, T> {
     fn clone(&self) -> Self {
         self.state.read().unwrap();
         Self {
@@ -110,5 +110,5 @@ impl<'a, T> Clone for ReadGaurd<'a, T> {
 
 
 
-unsafe impl<'a,T> Send for ReadGaurd<'a, T>{}
-unsafe impl<'a, T> Sync for ReadGaurd<'a, T>{}
+unsafe impl<'a,T> Send for ReadGuard<'a, T>{}
+unsafe impl<'a, T> Sync for ReadGuard<'a, T>{}

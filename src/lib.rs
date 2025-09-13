@@ -40,12 +40,12 @@
 //!
 //!     
 //!
-mod read_gaurd;
-mod slice_read_gaurd;
-mod slice_write_gaurd;
+mod read_guard;
+mod slice_read_guard;
+mod slice_write_guard;
 #[cfg(test)]
 mod tests;
-mod write_gaurd;
+mod write_guard;
 
 use atomic_wait::wait;
 use std::{
@@ -58,10 +58,10 @@ use std::{
     thread,
 };
 
-pub use read_gaurd::ReadGaurd;
-pub use slice_read_gaurd::SliceReadGaurd;
-pub use slice_write_gaurd::SliceWriteGaurd;
-pub use write_gaurd::WriteGaurd;
+pub use read_guard::ReadGuard;
+pub use slice_read_guard::SliceReadGuard;
+pub use slice_write_guard::SliceWriteGuard;
+pub use write_guard::WriteGuard;
 
 #[derive(Debug)]
 pub enum LockError {
@@ -235,33 +235,33 @@ impl<T> MrwLock<T> {
         }
     }
 
-    pub fn try_read(&self) -> LockResult<ReadGaurd<T>> {
+    pub fn try_read(&self) -> LockResult<ReadGuard<T>> {
         self.state.try_read()?;
-        Ok(ReadGaurd {
+        Ok(ReadGuard {
             state: &self.state,
             data: self.data.get(),
         })
     }
 
-    pub fn read(&self) -> LockResult<ReadGaurd<T>> {
+    pub fn read(&self) -> LockResult<ReadGuard<T>> {
         self.state.read()?;
-        Ok(ReadGaurd {
+        Ok(ReadGuard {
             state: &self.state,
             data: self.data.get(),
         })
     }
 
-    pub fn try_write(&self) -> LockResult<WriteGaurd<T>> {
+    pub fn try_write(&self) -> LockResult<WriteGuard<T>> {
         self.state.try_write()?;
-        Ok(WriteGaurd {
+        Ok(WriteGuard {
             state: &self.state,
             data: self.data.get(),
         })
     }
 
-    pub fn write(&self) -> LockResult<WriteGaurd<T>> {
+    pub fn write(&self) -> LockResult<WriteGuard<T>> {
         self.state.write()?;
-        Ok(WriteGaurd {
+        Ok(WriteGuard {
             state: &self.state,
             data: self.data.get(),
         })
@@ -270,45 +270,45 @@ impl<T> MrwLock<T> {
 
 impl<T> MrwLock<T>
 {
-    pub fn try_read_slice<U>(&self) -> LockResult<SliceReadGaurd<U>>
+    pub fn try_read_slice<U>(&self) -> LockResult<SliceReadGuard<U>>
     where
         T: BorrowMut<[U]>,
     {
         self.state.try_read()?;
-        Ok(SliceReadGaurd {
+        Ok(SliceReadGuard {
             state: &self.state,
             data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 
-    pub fn read_slice<U>(&self) -> LockResult<SliceReadGaurd<U>>
+    pub fn read_slice<U>(&self) -> LockResult<SliceReadGuard<U>>
     where
         T: BorrowMut<[U]>,
     {
         self.state.read()?;
-        Ok(SliceReadGaurd {
+        Ok(SliceReadGuard {
             state: &self.state,
             data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 
-    pub fn try_write_slice<U>(&self) -> LockResult<SliceWriteGaurd<U>>
+    pub fn try_write_slice<U>(&self) -> LockResult<SliceWriteGuard<U>>
     where
         T: BorrowMut<[U]>,
     {
         self.state.try_write()?;
-        Ok(SliceWriteGaurd {
+        Ok(SliceWriteGuard {
             state: &self.state,
             data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })
     }
 
-    pub fn write_slice<U>(&self) -> LockResult<SliceWriteGaurd<U>>
+    pub fn write_slice<U>(&self) -> LockResult<SliceWriteGuard<U>>
     where
         T: BorrowMut<[U]>,
     {
         self.state.write()?;
-        Ok(SliceWriteGaurd {
+        Ok(SliceWriteGuard {
             state: &self.state,
             data: unsafe { (*self.data.get()).borrow_mut() } as *mut [U],
         })

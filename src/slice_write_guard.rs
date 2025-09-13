@@ -1,39 +1,34 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
-use crate::{LockResult, LockState, SliceWriteGaurd};
+use crate::{LockResult, LockState, SliceReadGuard};
 
-/// # Slice Read Guard
+/// # Slice Write Guard
 /// reduces indirection for read gaurds containing slices
 /// such as `Box<[T]>` or `Vec<T>`
-///
+/// Only points to the slice, so stardard Write Guards may be preferable if you want to mutate a Vec
+///  
 /// # Examples
 /// ```
 /// use manual_rwlock::MrwLock;
-/// let rwlock = MrwLock::new([1,2,3]);
-/// let slice_read = rwlock.try_read_slice().unwrap();
-/// assert_eq!(*slice_read, [1,2,3])
+///
+/// let rwlock = MrwLock::new(vec![1, 2, 3]);
+/// let mut slice_write = rwlock.try_write_slice().unwrap();
+/// slice_write[2] = 4;
+/// assert_eq!(*slice_write, [1,2,4])
 ///
 /// ```
-pub struct SliceReadGaurd<'a, T: Sized> {
+pub struct SliceWriteGuard<'a, T: Sized> {
     pub(super) state: &'a LockState,
     pub(super) data: *mut [T],
 }
 
-impl<'a, T> SliceReadGaurd<'a, T> {
-    pub fn try_to_write(self) -> LockResult<SliceWriteGaurd<'a, T>> {
-        self.state.try_to_write()?;
-        Ok(SliceWriteGaurd {
+impl<'a, T> SliceWriteGuard<'a, T> {
+    pub fn to_read(self) -> SliceReadGuard<'a, T> {
+        self.state.to_read();
+        SliceReadGuard {
             state: &self.state,
             data: self.data,
-        })
-    }
-
-    pub fn to_write(self) -> LockResult<SliceWriteGaurd<'a, T>> {
-        self.state.to_write()?;
-        Ok(SliceWriteGaurd {
-            state: &self.state,
-            data: self.data,
-        })
+        }
     }
 
     /// Releases lock without dropping object. This can allow for a write lock to obtained and do some work after which the lock must be reobtained
@@ -44,26 +39,27 @@ impl<'a, T> SliceReadGaurd<'a, T> {
     ///  use manual_rwlock::MrwLock;
     ///
     /// let rwlock = MrwLock::new(Vec::from([1,2,3]));
-    /// let read_rw = rwlock.read_slice().unwrap();
-    /// unsafe { read_rw.early_release() };
+    /// let mut write_rw = rwlock.write_slice().unwrap();
+    /// unsafe { write_rw.early_release() };
     /// {
-    ///     let mut write = rwlock.write_slice().unwrap();
-    ///     write[2] = 4;
+    ///     let mut write2 = rwlock.write_slice().unwrap();
+    ///     write2[2] = 4;
     /// }
-    /// unsafe { read_rw.reobtain().unwrap() };
-    /// assert_eq!(*read_rw, [1,2,4]);
+    /// unsafe { write_rw.reobtain().unwrap() };
+    /// write_rw[0] = 4;
+    /// assert_eq!(*write_rw, [4,2,4]);
     ///
     ///```
     ///
     pub unsafe fn early_release(&self) {
-        self.state.drop_read();
+        self.state.drop_write();
     }
 
     /// block until lock can be reobtained
     /// # Safety
     /// do not use unless early release has been called. Only call at most once after each early release
     pub unsafe fn reobtain(&self) -> LockResult<()> {
-        self.state.read()?;
+        self.state.write()?;
         Ok(())
     }
 
@@ -71,18 +67,18 @@ impl<'a, T> SliceReadGaurd<'a, T> {
     /// # Safety
     /// do not use unless early release has been called. Only call at most once after each early release
     pub unsafe fn try_reobtain(&self) -> LockResult<()> {
-        self.state.try_read()?;
+        self.state.try_write()?;
         Ok(())
     }
 }
 
-impl<'a, T> Drop for SliceReadGaurd<'a, T> {
+impl<'a, T> Drop for SliceWriteGuard<'a, T> {
     fn drop(&mut self) {
-        self.state.drop_read();
+        self.state.drop_write();
     }
 }
 
-impl<'a, T> Deref for SliceReadGaurd<'a, T> {
+impl<'a, T> Deref for SliceWriteGuard<'a, T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -90,12 +86,11 @@ impl<'a, T> Deref for SliceReadGaurd<'a, T> {
     }
 }
 
-impl<'a, T> Clone for SliceReadGaurd<'a, T> {
-    fn clone(&self) -> Self {
-        self.state.read().unwrap();
-        Self { state: self.state, data: self.data }
+impl<'a, T> DerefMut for SliceWriteGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.data }
     }
 }
 
-unsafe impl<'a,T> Send for SliceReadGaurd<'a, T>{}
-unsafe impl<'a, T> Sync for SliceReadGaurd<'a, T>{}
+unsafe impl<'a,T> Send for SliceWriteGuard<'a, T>{}
+unsafe impl<'a, T> Sync for SliceWriteGuard<'a, T>{}

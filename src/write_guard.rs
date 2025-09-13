@@ -1,17 +1,17 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::{LockResult, LockState, ReadGaurd};
+use crate::{LockResult, LockState, ReadGuard};
 
-pub struct WriteGaurd<'a, T: Sized> {
+pub struct WriteGuard<'a, T: Sized> {
     pub(super) state: &'a LockState,
     pub(super) data: *mut T,
 }
 
-impl<'a, T> WriteGaurd<'a, T> {
+impl<'a, T> WriteGuard<'a, T> {
     /// Convert to a read guard. This should always work as having a write lock guarantees there is only one lock
-    pub fn to_read(self) -> ReadGaurd<'a, T> {
+    pub fn to_read(self) -> ReadGuard<'a, T> {
         self.state.to_read();
-        ReadGaurd {
+        ReadGuard {
             state: &self.state,
             data: self.data,
         }
@@ -58,13 +58,13 @@ impl<'a, T> WriteGaurd<'a, T> {
     }
 }
 
-impl<'a, T> Drop for WriteGaurd<'a, T> {
+impl<'a, T> Drop for WriteGuard<'a, T> {
     fn drop(&mut self) {
         self.state.drop_write();
     }
 }
 
-impl<'a, T> Deref for WriteGaurd<'a, T> {
+impl<'a, T> Deref for WriteGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -72,11 +72,11 @@ impl<'a, T> Deref for WriteGaurd<'a, T> {
     }
 }
 
-impl<'a, T> DerefMut for WriteGaurd<'a, T> {
+impl<'a, T> DerefMut for WriteGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.data }
     }
 }
 
-unsafe impl<'a,T> Send for WriteGaurd<'a, T>{}
-unsafe impl<'a, T> Sync for WriteGaurd<'a, T>{}
+unsafe impl<'a,T> Send for WriteGuard<'a, T>{}
+unsafe impl<'a, T> Sync for WriteGuard<'a, T>{}
