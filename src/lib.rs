@@ -80,10 +80,10 @@ pub struct LockState {
 
 impl LockState {
     ///Creates new lock state
-    pub fn new() -> LockState {
+    pub const fn new() -> LockState {
         LockState {
-            state: 0.into(),
-            poisoned: false.into(),
+            state: AtomicU32::new(0),
+            poisoned: AtomicBool::new(false),
         }
     }
 
@@ -228,7 +228,7 @@ pub struct MrwLock<T: Sized> {
 }
 
 impl<T> MrwLock<T> {
-    pub fn new(data: T) -> MrwLock<T> {
+    pub const fn new(data: T) -> MrwLock<T> {
         MrwLock {
             state: LockState::new(),
             data: UnsafeCell::new(data),
